@@ -34,10 +34,10 @@ build/
 
 ### Junie IA ###
 .junie
-.mvn
 ### JetBrains Qodana ###
 qodana.yaml
 .github/workflows/qodana_code_quality.yml
 
 ### Claude ###
 .claude/
+
