@@ -76,5 +76,6 @@ jobs:
       migration-result: ${{ needs.db-migration.result }}
       cd-result: ${{ needs.cd.result }}
       notify-discord: true
+    secrets: inherit
 
 
