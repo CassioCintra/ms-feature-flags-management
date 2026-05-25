@@ -15,6 +15,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -44,6 +45,7 @@ class FeatureFlagControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldCreateFlagDisabledAndReturn201() throws Exception {
         when(useCase.create(any())).thenReturn(flag(1L, "my-flag", "billing", "prod", false));
 
@@ -59,6 +61,7 @@ class FeatureFlagControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReuseCorrelatorFromRequestHeader() throws Exception {
         when(useCase.create(any())).thenReturn(flag(1L, "my-flag", "billing", "prod", false));
 
@@ -72,6 +75,7 @@ class FeatureFlagControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn409WithErrorResponseWhenCreatingDuplicateFlag() throws Exception {
         when(useCase.create(any())).thenThrow(FeatureFlagAlreadyExistsException.alreadyExists("dup", "svc", "env"));
 
@@ -88,6 +92,7 @@ class FeatureFlagControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldUpdateFlagAndReturn200() throws Exception {
         when(useCase.update(eq(1L), any())).thenReturn(flag(1L, "my-flag", "billing", "prod", true));
 
@@ -100,6 +105,7 @@ class FeatureFlagControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn404WithErrorResponseWhenUpdatingNonExistentFlag() throws Exception {
         when(useCase.update(eq(999L), any())).thenThrow(FeatureFlagNotFoundException.notFound(999L));
 
@@ -115,6 +121,7 @@ class FeatureFlagControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldDeleteFlagAndReturn204() throws Exception {
         doNothing().when(useCase).delete(1L);
 
@@ -123,6 +130,7 @@ class FeatureFlagControllerTest {
     }
 
     @Test
+    @WithMockUser
     void shouldReturn404WhenDeletingNonExistentFlag() throws Exception {
         doThrow(FeatureFlagNotFoundException.notFound(999L)).when(useCase).delete(999L);
 
@@ -154,3 +162,5 @@ class FeatureFlagControllerTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 }
+
+
