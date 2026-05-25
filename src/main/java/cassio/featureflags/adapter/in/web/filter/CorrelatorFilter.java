@@ -14,8 +14,8 @@ import java.util.UUID;
 @Component
 public class CorrelatorFilter extends OncePerRequestFilter {
 
-    static final String HEADER = "X-Correlator";
-    static final String MDC_KEY = "correlator";
+    public static final String HEADER = "X-Correlator";
+    public static final String MDC_KEY = "correlator";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -36,3 +36,4 @@ public class CorrelatorFilter extends OncePerRequestFilter {
         }
     }
 }
+
