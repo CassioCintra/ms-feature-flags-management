@@ -12,7 +12,7 @@ jobs:
       java-version: '25'
       enable-tests: true
       coverage-minimum: 90
-      enable-sonar: false
+      enable-sonar: true
     secrets:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -67,3 +67,4 @@ jobs:
       migration-result: ${{ needs.db-migration.result }}
       cd-result: ${{ needs.cd.result }}
       notify-discord: true
+
