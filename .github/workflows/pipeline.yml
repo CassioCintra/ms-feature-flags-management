@@ -26,12 +26,6 @@ jobs:
   security-source:
     name: Security — source
     uses: CassioCintra/platform-ops/.github/workflows/reusable-security.yml@main
-    with:
-      service-name: ms-feature-flags-management
-      fail-on-severity: HIGH
-      run-image-scan: false
-    secrets:
-      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
 
   db-migration:
     name: DB migration
@@ -55,12 +49,6 @@ jobs:
     name: Security — image
     needs: [cd]
     uses: CassioCintra/platform-ops/.github/workflows/reusable-security.yml@main
-    with:
-      service-name: ms-feature-flags-management
-      image-tag: ${{ needs.cd.outputs.image-tag }}
-      fail-on-severity: HIGH
-    secrets:
-      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
 
   notify:
     name: Notify
