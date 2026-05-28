@@ -28,6 +28,7 @@
     </scm>
     <properties>
         <java.version>25</java.version>
+        <postgresql.version>42.7.11</postgresql.version>
         <sonar.organization>cassiocintra</sonar.organization>
         <sonar.projectKey>CassioCintra_ms-feature-flags-management</sonar.projectKey>
     </properties>
