@@ -55,10 +55,9 @@ jobs:
       image-tag: ${{ needs.cd.outputs.image-tag }}
       overall-status: ${{ needs.cd.result }}
       tests-result: ${{ needs.quality.result }}
+      quality-result:  ${{ needs.quality.result }}
       security-result: ${{ needs.security-source.result }}
       migration-result: ${{ needs.db-migration.result }}
       cd-result: ${{ needs.cd.result }}
       notify-discord: true
     secrets: inherit
-
-
