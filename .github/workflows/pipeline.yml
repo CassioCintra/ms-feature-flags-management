@@ -45,14 +45,9 @@ jobs:
     secrets:
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
 
-  security-image:
-    name: Security — image
-    needs: [cd]
-    uses: CassioCintra/platform-ops/.github/workflows/reusable-security.yml@main
-
   notify:
     name: Notify
-    needs: [quality, security-source, db-migration, cd, security-image]
+    needs: [quality, security-source, db-migration, cd]
     if: always()
     uses: CassioCintra/platform-ops/.github/workflows/reusable-notify.yml@main
     with:
