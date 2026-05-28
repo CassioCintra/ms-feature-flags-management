@@ -38,6 +38,6 @@ build/
 qodana.yaml
 .github/workflows/qodana_code_quality.yml
 
-### Claude ###
-.claude/
-
+### AI ###
+.ai
+.claude
