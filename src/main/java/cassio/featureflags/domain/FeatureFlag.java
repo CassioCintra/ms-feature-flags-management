@@ -6,6 +6,7 @@ import lombok.With;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Builder(toBuilder = true)
@@ -17,7 +18,7 @@ public class FeatureFlag {
     private final String serviceName;
     private final FlagType type;
     private final Integer rollout;
-    private final List<String> envs;
+    private final Map<String, Boolean> environments;
     private final List<String> tags;
     private final String owner;
     private final LocalDate expiresAt;
@@ -28,19 +29,24 @@ public class FeatureFlag {
     }
 
     public EvaluationResult evaluate(EvaluationContext context) {
-        if (!isActiveForEnv(context.env())) {
+        boolean active = resolveActiveState(context.env());
+        if (!active) {
             return new EvaluationResult(flagName, false, effectiveType(), rollout);
         }
         boolean result = switch (effectiveType()) {
             case ROLLOUT -> evaluateRollout(context);
-            case BOOLEAN, MULTIVARIATE -> enabled;
+            case BOOLEAN, MULTIVARIATE -> true;
         };
         return new EvaluationResult(flagName, result, effectiveType(), rollout);
     }
 
-    private boolean isActiveForEnv(String env) {
-        if (env == null || envs == null || envs.isEmpty()) return true;
-        return envs.contains(env);
+    private boolean resolveActiveState(String env) {
+        if (!enabled) return false;
+        if (env != null && environments != null && !environments.isEmpty()) {
+            Boolean envState = environments.get(env);
+            return Boolean.TRUE.equals(envState);
+        }
+        return enabled;
     }
 
     private FlagType effectiveType() {
@@ -48,7 +54,7 @@ public class FeatureFlag {
     }
 
     private boolean evaluateRollout(EvaluationContext context) {
-        if (!enabled || rollout == null || rollout <= 0) return false;
+        if (rollout == null || rollout <= 0) return false;
         if (rollout >= 100) return true;
         int hash = Math.abs((context.userId() + "|" + flagName).hashCode()) % 100;
         return hash < rollout;

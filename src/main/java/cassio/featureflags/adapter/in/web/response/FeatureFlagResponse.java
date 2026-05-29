@@ -5,6 +5,7 @@ import cassio.featureflags.domain.FlagType;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 public record FeatureFlagResponse(
         Long id,
@@ -12,7 +13,7 @@ public record FeatureFlagResponse(
         String serviceName,
         FlagType type,
         Integer rollout,
-        List<String> envs,
+        Map<String, Boolean> environments,
         List<String> tags,
         String owner,
         LocalDate expiresAt,
@@ -25,7 +26,7 @@ public record FeatureFlagResponse(
                 flag.getServiceName(),
                 flag.getType(),
                 flag.getRollout(),
-                flag.getEnvs(),
+                flag.getEnvironments(),
                 flag.getTags(),
                 flag.getOwner(),
                 flag.getExpiresAt(),

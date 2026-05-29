@@ -41,7 +41,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
                 .serviceName(command.serviceName())
                 .type(command.type())
                 .rollout(command.rollout())
-                .envs(command.envs())
+                .environments(disableAll(command.environments()))
                 .tags(command.tags())
                 .owner(command.owner())
                 .expiresAt(command.expiresAt())
@@ -77,12 +77,17 @@ public class FeatureFlagService implements FeatureFlagUseCase {
         return updatedFlag;
     }
 
+    private static Map<String, Boolean> disableAll(Map<String, Boolean> environments) {
+        if (environments == null || environments.isEmpty()) return Map.of();
+        return environments.keySet().stream().collect(Collectors.toMap(k -> k, k -> false));
+    }
+
     private static FeatureFlag.FeatureFlagBuilder patchFlagFields(PatchFlagCommand command, FeatureFlag flag) {
         FeatureFlag.FeatureFlagBuilder builder = flag.toBuilder();
-        if (command.type() != null)      builder.type(command.type());
-        if (command.rollout() != null)   builder.rollout(command.rollout());
-        if (command.envs() != null)      builder.envs(command.envs());
-        if (command.tags() != null)      builder.tags(command.tags());
+        if (command.type() != null)         builder.type(command.type());
+        if (command.rollout() != null)      builder.rollout(command.rollout());
+        if (command.environments() != null) builder.environments(command.environments());
+        if (command.tags() != null)         builder.tags(command.tags());
         if (command.owner() != null)     builder.owner(command.owner());
         if (command.expiresAt() != null) builder.expiresAt(command.expiresAt());
         if (command.enabled() != null)   builder.enabled(command.enabled());

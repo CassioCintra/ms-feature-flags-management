@@ -10,8 +10,10 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Entity
@@ -42,8 +44,9 @@ public class FeatureFlagEntity {
 
     @ElementCollection
     @CollectionTable(name = "flag_environments", joinColumns = @JoinColumn(name = "flag_id"))
-    @Column(name = "env_name")
-    private Set<String> envs;
+    @MapKeyColumn(name = "env_name")
+    @Column(name = "enabled")
+    private Map<String, Boolean> environments;
 
     @ElementCollection
     @CollectionTable(name = "flag_tags", joinColumns = @JoinColumn(name = "flag_id"))
@@ -74,7 +77,7 @@ public class FeatureFlagEntity {
                 .serviceName(flag.getServiceName())
                 .type(flag.getType() != null ? flag.getType() : FlagType.BOOLEAN)
                 .rollout(flag.getRollout())
-                .envs(flag.getEnvs() != null ? new HashSet<>(flag.getEnvs()) : new HashSet<>())
+                .environments(flag.getEnvironments() != null ? new HashMap<>(flag.getEnvironments()) : new HashMap<>())
                 .tags(flag.getTags() != null ? new HashSet<>(flag.getTags()) : new HashSet<>())
                 .owner(flag.getOwner())
                 .expiresAt(flag.getExpiresAt())
@@ -89,7 +92,7 @@ public class FeatureFlagEntity {
                 .serviceName(serviceName)
                 .type(type)
                 .rollout(rollout)
-                .envs(envs != null ? new ArrayList<>(envs) : List.of())
+                .environments(environments != null ? new HashMap<>(environments) : Map.of())
                 .tags(tags != null ? new ArrayList<>(tags) : List.of())
                 .owner(owner)
                 .expiresAt(expiresAt)

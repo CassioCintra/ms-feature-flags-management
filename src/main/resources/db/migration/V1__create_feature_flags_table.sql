@@ -14,6 +14,7 @@ CREATE TABLE feature_flags (
 CREATE TABLE flag_environments (
     flag_id  BIGINT       NOT NULL REFERENCES feature_flags(id) ON DELETE CASCADE,
     env_name VARCHAR(255) NOT NULL,
+    enabled  BOOLEAN      NOT NULL DEFAULT FALSE,
     PRIMARY KEY (flag_id, env_name)
 );
 

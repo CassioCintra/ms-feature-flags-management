@@ -48,23 +48,23 @@ class FeatureFlagServiceTest {
                 .flagName(name)
                 .serviceName(svc)
                 .type(FlagType.BOOLEAN)
-                .envs(List.of("prod"))
+                .environments(Map.of("prod", true))
                 .tags(List.of())
                 .enabled(enabled)
                 .build();
     }
 
     @Test
-    void shouldCreateFlagWithEnrichedFieldsAndPublishCreatedEvent() {
+    void shouldCreateFlagWithAllEnvironmentsDisabledRegardlessOfInput() {
         CreateFlagCommand cmd = new CreateFlagCommand(
                 "checkout_v2", "billing", FlagType.ROLLOUT, 30,
-                List.of("production", "staging"), List.of("payments"), "payments-team",
+                Map.of("production", true, "staging", true), List.of("payments"), "payments-team",
                 LocalDate.of(2026, 9, 1));
 
         FeatureFlag saved = FeatureFlag.builder()
                 .id(1L).flagName("checkout_v2").serviceName("billing")
                 .type(FlagType.ROLLOUT).rollout(30)
-                .envs(List.of("production", "staging")).tags(List.of("payments"))
+                .environments(Map.of("production", false, "staging", false)).tags(List.of("payments"))
                 .owner("payments-team").expiresAt(LocalDate.of(2026, 9, 1))
                 .enabled(false).build();
 
@@ -73,15 +73,15 @@ class FeatureFlagServiceTest {
 
         FeatureFlag result = service.create(cmd);
 
-        assertThat(result.getId()).isEqualTo(1L);
-        assertThat(result.getType()).isEqualTo(FlagType.ROLLOUT);
-        assertThat(result.getRollout()).isEqualTo(30);
-        assertThat(result.getEnvs()).containsExactly("production", "staging");
         assertThat(result.isEnabled()).isFalse();
+        assertThat(result.getEnvironments()).containsEntry("production", false).containsEntry("staging", false);
 
         ArgumentCaptor<FeatureFlag> captor = ArgumentCaptor.forClass(FeatureFlag.class);
         verify(repository).save(captor.capture());
-        assertThat(captor.getValue().isEnabled()).isFalse();
+        // garante que o service forçou false em todos os ambientes, ignorando o que veio no comando
+        assertThat(captor.getValue().getEnvironments())
+                .containsEntry("production", false)
+                .containsEntry("staging", false);
         verify(eventPublisher).publish(saved, FlagAction.CREATED);
     }
 
@@ -90,7 +90,7 @@ class FeatureFlagServiceTest {
         when(repository.existsByFlagName("dup")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(new CreateFlagCommand(
-                "dup", "billing", FlagType.BOOLEAN, null, List.of(), List.of(), null, null)))
+                "dup", "billing", FlagType.BOOLEAN, null, Map.of(), List.of(), null, null)))
                 .isInstanceOf(FeatureFlagAlreadyExistsException.class);
 
         verify(repository, never()).save(any());
@@ -194,10 +194,10 @@ class FeatureFlagServiceTest {
     }
 
     @Test
-    void shouldEvaluateFlagAsDisabledWhenEnvNotInList() {
+    void shouldEvaluateFlagAsDisabledWhenEnvNotConfigured() {
         FeatureFlag flag = FeatureFlag.builder()
                 .id(1L).flagName("my-flag").serviceName("billing")
-                .type(FlagType.BOOLEAN).envs(List.of("staging")).tags(List.of())
+                .type(FlagType.BOOLEAN).environments(Map.of("staging", true)).tags(List.of())
                 .enabled(true).build();
         when(repository.findByFlagName("my-flag")).thenReturn(Optional.of(flag));
 

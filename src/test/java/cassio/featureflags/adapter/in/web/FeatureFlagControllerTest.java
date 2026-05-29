@@ -50,7 +50,7 @@ class FeatureFlagControllerTest {
     private FeatureFlag flag(Long id, String name, String svc, FlagType type, boolean enabled) {
         return FeatureFlag.builder()
                 .id(id).flagName(name).serviceName(svc)
-                .type(type).envs(List.of("prod")).tags(List.of())
+                .type(type).environments(Map.of("prod", true)).tags(List.of())
                 .enabled(enabled).build();
     }
 
@@ -65,7 +65,7 @@ class FeatureFlagControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new CreateFlagRequest("my-flag", "billing", FlagType.BOOLEAN, null,
-                                        List.of("prod"), List.of(), null, null))))
+                                        Map.of("prod", true), List.of(), null, null))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.flagName").value("my-flag"))
                 .andExpect(jsonPath("$.type").value("BOOLEAN"))
@@ -82,7 +82,7 @@ class FeatureFlagControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new CreateFlagRequest("dup", "svc", FlagType.BOOLEAN, null,
-                                        List.of(), List.of(), null, null))))
+                                        Map.of(), List.of(), null, null))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409));
     }
@@ -235,7 +235,7 @@ class FeatureFlagControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 new CreateFlagRequest("my-flag", "billing", FlagType.BOOLEAN, null,
-                                        List.of(), List.of(), null, null))))
+                                        Map.of(), List.of(), null, null))))
                 .andExpect(status().isCreated())
                 .andExpect(header().string(CorrelatorFilter.HEADER, "my-custom-correlator"));
     }

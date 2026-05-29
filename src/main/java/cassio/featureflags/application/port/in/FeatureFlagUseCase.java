@@ -30,7 +30,7 @@ public interface FeatureFlagUseCase {
             String serviceName,
             FlagType type,
             Integer rollout,
-            List<String> envs,
+            Map<String, Boolean> environments,
             List<String> tags,
             String owner,
             LocalDate expiresAt
@@ -39,7 +39,7 @@ public interface FeatureFlagUseCase {
     record PatchFlagCommand(
             FlagType type,
             Integer rollout,
-            List<String> envs,
+            Map<String, Boolean> environments,
             List<String> tags,
             String owner,
             LocalDate expiresAt,

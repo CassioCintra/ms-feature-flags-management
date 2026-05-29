@@ -36,7 +36,7 @@ public class FeatureFlagController {
                 useCase.create(new CreateFlagCommand(
                         request.flagName(), request.serviceName(),
                         request.type(), request.rollout(),
-                        request.envs(), request.tags(),
+                        request.environments(), request.tags(),
                         request.owner(), request.expiresAt())));
         log.info("Flag created [flagName={}]", response.flagName());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -64,7 +64,7 @@ public class FeatureFlagController {
         FeatureFlagResponse response = FeatureFlagResponse.from(
                 useCase.patch(key, new PatchFlagCommand(
                         request.type(), request.rollout(),
-                        request.envs(), request.tags(),
+                        request.environments(), request.tags(),
                         request.owner(), request.expiresAt(),
                         request.enabled())));
         log.info("Flag patched [key={}]", key);

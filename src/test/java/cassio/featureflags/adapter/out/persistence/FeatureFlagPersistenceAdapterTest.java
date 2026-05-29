@@ -12,6 +12,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,7 +29,7 @@ class FeatureFlagPersistenceAdapterTest {
     private FeatureFlag newFlag(String name, String svc, FlagType type, boolean enabled) {
         return FeatureFlag.builder()
                 .flagName(name).serviceName(svc)
-                .type(type).envs(List.of("prod")).tags(List.of("t1"))
+                .type(type).environments(Map.of("prod", true)).tags(List.of("t1"))
                 .enabled(enabled).build();
     }
 
@@ -39,7 +40,7 @@ class FeatureFlagPersistenceAdapterTest {
         assertThat(saved.getId()).isNotNull().isPositive();
         assertThat(saved.getFlagName()).isEqualTo("my-flag");
         assertThat(saved.getType()).isEqualTo(FlagType.BOOLEAN);
-        assertThat(saved.getEnvs()).containsExactly("prod");
+        assertThat(saved.getEnvironments()).containsEntry("prod", true);
         assertThat(saved.isEnabled()).isFalse();
     }
 
@@ -48,19 +49,19 @@ class FeatureFlagPersistenceAdapterTest {
         FeatureFlag flag = FeatureFlag.builder()
                 .flagName("checkout_v2").serviceName("billing")
                 .type(FlagType.ROLLOUT).rollout(30)
-                .envs(List.of("production", "staging"))
+                .environments(Map.of("production", true, "staging", false))
                 .tags(List.of("payments", "checkout"))
                 .owner("payments-team")
                 .expiresAt(LocalDate.of(2026, 9, 1))
-                .enabled(false).build();
+                .enabled(true).build();
 
         FeatureFlag saved = adapter.save(flag);
 
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getType()).isEqualTo(FlagType.ROLLOUT);
         assertThat(saved.getRollout()).isEqualTo(30);
-        assertThat(saved.getEnvs()).containsExactly("production", "staging");
-        assertThat(saved.getTags()).containsExactly("payments", "checkout");
+        assertThat(saved.getEnvironments()).containsEntry("production", true).containsEntry("staging", false);
+        assertThat(saved.getTags()).containsExactlyInAnyOrder("payments", "checkout");
         assertThat(saved.getOwner()).isEqualTo("payments-team");
         assertThat(saved.getExpiresAt()).isEqualTo(LocalDate.of(2026, 9, 1));
     }

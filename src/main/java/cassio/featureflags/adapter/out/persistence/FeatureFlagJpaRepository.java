@@ -19,10 +19,11 @@ interface FeatureFlagJpaRepository extends JpaRepository<FeatureFlagEntity, Long
 
     @Query("""
             SELECT DISTINCT f FROM FeatureFlagEntity f
+            LEFT JOIN f.environments e
             WHERE (:service IS NULL OR f.serviceName = :service)
               AND (:type    IS NULL OR f.type         = :type)
               AND (:search  IS NULL OR f.flagName LIKE %:search%)
-              AND (:env     IS NULL OR :env MEMBER OF f.envs)
+              AND (:env     IS NULL OR KEY(e) = :env)
             """)
     List<FeatureFlagEntity> findAllWithFilters(
             @Param("service") String service,
