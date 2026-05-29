@@ -3,6 +3,8 @@ package cassio.featureflags.application;
 import cassio.featureflags.application.port.in.FeatureFlagUseCase;
 import cassio.featureflags.application.port.out.FeatureFlagRepository;
 import cassio.featureflags.application.port.out.FlagEventPublisher;
+import cassio.featureflags.domain.EvaluationContext;
+import cassio.featureflags.domain.EvaluationResult;
 import cassio.featureflags.domain.FeatureFlag;
 import cassio.featureflags.domain.FlagAction;
 import cassio.featureflags.domain.exception.FeatureFlagAlreadyExistsException;
@@ -13,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -25,72 +29,120 @@ public class FeatureFlagService implements FeatureFlagUseCase {
     @Override
     @Transactional
     public FeatureFlag create(CreateFlagCommand command) {
-        log.debug("Checking existence [flagName={}, service={}, environment={}]",
-                command.flagName(), command.serviceName(), command.environmentName());
+        log.debug("Checking existence [flagName={}]", command.flagName());
 
-        if (repository.existsByFlagNameAndServiceNameAndEnvironmentName(
-                command.flagName(), command.serviceName(), command.environmentName())) {
-            log.warn("Flag already exists [flagName={}, service={}, environment={}]",
-                    command.flagName(), command.serviceName(), command.environmentName());
-            throw FeatureFlagAlreadyExistsException.alreadyExists(
-                    command.flagName(), command.serviceName(), command.environmentName());
+        if (repository.existsByFlagName(command.flagName())) {
+            log.warn("Flag already exists [flagName={}]", command.flagName());
+            throw FeatureFlagAlreadyExistsException.alreadyExists(command.flagName());
         }
 
-        FeatureFlag flag = FeatureFlag.builder()
+        var flag = FeatureFlag.builder()
                 .flagName(command.flagName())
                 .serviceName(command.serviceName())
-                .environmentName(command.environmentName())
+                .type(command.type())
+                .rollout(command.rollout())
+                .envs(command.envs())
+                .tags(command.tags())
+                .owner(command.owner())
+                .expiresAt(command.expiresAt())
                 .enabled(false)
                 .build();
 
-        FeatureFlag saved = repository.save(flag);
-        log.debug("Flag persisted [id={}, flagName={}]", saved.getId(), saved.getFlagName());
+        var persistedFlag = repository.save(flag);
+        log.debug("Flag persisted [id={}, flagName={}]", persistedFlag.getId(), persistedFlag.getFlagName());
 
-        eventPublisher.publish(saved, FlagAction.CREATED);
-        return saved;
+        eventPublisher.publish(persistedFlag, FlagAction.CREATED);
+        return persistedFlag;
     }
 
     @Override
     @Transactional
-    public FeatureFlag update(Long id, UpdateFlagCommand command) {
-        log.debug("Looking up flag for update [id={}]", id);
+    public FeatureFlag patch(String key, PatchFlagCommand command) {
+        log.debug("Looking up flag for patch [key={}]", key);
 
-        FeatureFlag flag = repository.findById(id)
+        var flag = repository.findByFlagName(key)
                 .orElseThrow(() -> {
-                    log.warn("Flag not found for update [id={}]", id);
-                    return FeatureFlagNotFoundException.notFound(id);
+                    log.warn("Flag not found for patch [key={}]", key);
+                    return FeatureFlagNotFoundException.notFound(key);
                 });
 
-        FeatureFlag updated = repository.save(flag.toggleEnabled(command.enabled()));
-        log.debug("Flag toggled [id={}, enabled={}]", updated.getId(), updated.isEnabled());
+        boolean enabledChanged = command.enabled() != null && command.enabled() != flag.isEnabled();
 
-        eventPublisher.publish(updated, FlagAction.UPDATED);
-        return updated;
+        var builder = patchFlagFields(command, flag);
+
+        var updatedFlag = repository.save(builder.build());
+        log.debug("Flag patched [key={}, enabledChanged={}]", key, enabledChanged);
+
+        eventPublisher.publish(updatedFlag, enabledChanged ? FlagAction.TOGGLED : FlagAction.UPDATED);
+        return updatedFlag;
+    }
+
+    private static FeatureFlag.FeatureFlagBuilder patchFlagFields(PatchFlagCommand command, FeatureFlag flag) {
+        FeatureFlag.FeatureFlagBuilder builder = flag.toBuilder();
+        if (command.type() != null)      builder.type(command.type());
+        if (command.rollout() != null)   builder.rollout(command.rollout());
+        if (command.envs() != null)      builder.envs(command.envs());
+        if (command.tags() != null)      builder.tags(command.tags());
+        if (command.owner() != null)     builder.owner(command.owner());
+        if (command.expiresAt() != null) builder.expiresAt(command.expiresAt());
+        if (command.enabled() != null)   builder.enabled(command.enabled());
+        return builder;
     }
 
     @Override
     @Transactional
-    public void delete(Long id) {
-        log.debug("Looking up flag for deletion [id={}]", id);
+    public void delete(String key) {
+        log.debug("Looking up flag for deletion [key={}]", key);
 
-        FeatureFlag flag = repository.findById(id)
+        var flag = repository.findByFlagName(key)
                 .orElseThrow(() -> {
-                    log.warn("Flag not found for deletion [id={}]", id);
-                    return FeatureFlagNotFoundException.notFound(id);
+                    log.warn("Flag not found for deletion [key={}]", key);
+                    return FeatureFlagNotFoundException.notFound(key);
                 });
 
         repository.delete(flag);
-        log.debug("Flag deleted from repository [id={}]", id);
+        log.debug("Flag deleted [key={}]", key);
 
         eventPublisher.publish(flag, FlagAction.DELETED);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<FeatureFlag> findByServiceAndEnvironment(String serviceName, String environmentName) {
-        log.debug("Querying flags [service={}, environment={}]", serviceName, environmentName);
-        List<FeatureFlag> flags = repository.findByServiceNameAndEnvironmentName(serviceName, environmentName);
-        log.debug("Query result [service={}, environment={}, count={}]", serviceName, environmentName, flags.size());
-        return flags;
+    public List<FeatureFlag> listFlags(ListFlagsQuery query) {
+        log.debug("Listing flags [service={}, env={}, type={}, search={}]",
+                query.service(), query.env(), query.type(), query.search());
+        return repository.findAll(query.service(), query.env(), query.type(), query.search());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EvaluationResult evaluate(String key, EvaluationContext context) {
+        log.debug("Evaluating flag [key={}, userId={}, env={}]",
+                key, context.userId(), context.env());
+
+        var flag = repository.findByFlagName(key)
+                .orElseThrow(() -> FeatureFlagNotFoundException.notFound(key));
+
+        return flag.evaluate(context);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, EvaluationResult> evaluateBatch(List<String> keys, EvaluationContext context) {
+        log.debug("Evaluating batch [count={}, userId={}, env={}]",
+                keys.size(), context.userId(), context.env());
+
+        return repository.findByFlagNameIn(keys).stream()
+                .collect(Collectors.toMap(
+                        FeatureFlag::getFlagName,
+                        flag -> flag.evaluate(context)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ServiceInfo> getServices() {
+        return repository.findDistinctServiceNames().stream()
+                .map(svc -> new ServiceInfo(svc, repository.findAll(svc, null, null, null)))
+                .toList();
     }
 }
