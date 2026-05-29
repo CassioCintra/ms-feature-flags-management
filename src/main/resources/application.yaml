@@ -1,3 +1,4 @@
+#file: noinspection YAMLSchemaValidation,SpellCheckingInspection
 spring:
   application:
     name: ms-feature-flags-management
@@ -29,7 +30,11 @@ spring:
 
 feature-flag:
   kafka:
-    topic: feature-flags.events
+    topics:
+      created: flag.created
+      updated: flag.updated
+      toggled: flag.toggled
+      deleted: flag.deleted
 
 logging:
   pattern:
