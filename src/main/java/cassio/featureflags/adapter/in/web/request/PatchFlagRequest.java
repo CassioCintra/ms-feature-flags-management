@@ -5,13 +5,12 @@ import cassio.featureflags.domain.FlagType;
 import java.time.LocalDate;
 import java.util.List;
 
-public record CreateFlagRequest(
-        String flagName,
-        String serviceName,
+public record PatchFlagRequest(
         FlagType type,
         Integer rollout,
         List<String> envs,
         List<String> tags,
         String owner,
-        LocalDate expiresAt
+        LocalDate expiresAt,
+        Boolean enabled
 ) {}
