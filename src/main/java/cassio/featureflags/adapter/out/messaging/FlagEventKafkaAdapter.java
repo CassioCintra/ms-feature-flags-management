@@ -9,23 +9,42 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class FlagEventKafkaAdapter implements FlagEventPublisher {
 
-    @Value("${feature-flag.kafka.topic}")
-    private String topic;
+    @Value("${feature-flag.kafka.topics.created}")
+    private String topicCreated;
+
+    @Value("${feature-flag.kafka.topics.updated}")
+    private String topicUpdated;
+
+    @Value("${feature-flag.kafka.topics.toggled}")
+    private String topicToggled;
+
+    @Value("${feature-flag.kafka.topics.deleted}")
+    private String topicDeleted;
 
     private final KafkaTemplate<String, FlagEvent> kafkaTemplate;
 
     @Override
     public void publish(FeatureFlag flag, FlagAction action) {
+        String topic = resolveTopic(action);
         FlagEvent event = FlagEvent.from(flag, action);
-        String key = flag.getServiceName() + "." + flag.getEnvironmentName();
-        log.info("Publishing event [topic={}, key={}, action={}, flagName={}]",
-                topic, key, action, flag.getFlagName());
+        String key = flag.getServiceName() + "." + flag.getFlagName();
+        log.info("Publishing event [topic={}, key={}, action={}]", topic, key, action);
         kafkaTemplate.send(topic, key, event);
-        log.debug("Event published [topic={}, key={}]", topic, key);
+    }
+
+    private String resolveTopic(FlagAction action) {
+        return switch (action) {
+            case CREATED -> topicCreated;
+            case UPDATED -> topicUpdated;
+            case TOGGLED -> topicToggled;
+            case DELETED -> topicDeleted;
+        };
     }
 }
