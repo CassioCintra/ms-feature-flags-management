@@ -6,8 +6,7 @@ public class FeatureFlagAlreadyExistsException extends RuntimeException {
         super(message);
     }
 
-    public static FeatureFlagAlreadyExistsException alreadyExists(String flagName, String serviceName, String environmentName) {
-        return new FeatureFlagAlreadyExistsException(
-                "Feature flag already exists: " + flagName + " / " + serviceName + " / " + environmentName);
+    public static FeatureFlagAlreadyExistsException alreadyExists(String flagName) {
+        return new FeatureFlagAlreadyExistsException("Feature flag already exists: " + flagName);
     }
 }
