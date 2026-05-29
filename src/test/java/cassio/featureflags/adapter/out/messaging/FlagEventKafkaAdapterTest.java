@@ -13,16 +13,14 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class FlagEventKafkaAdapterTest {
 
-    private static final String TOPIC_CREATED = "flag.created";
-    private static final String TOPIC_UPDATED = "flag.updated";
-    private static final String TOPIC_TOGGLED = "flag.toggled";
-    private static final String TOPIC_DELETED = "flag.deleted";
+    private static final String TOPIC_FLAGS = "flag.events";
 
     @Mock
     private KafkaTemplate<String, FlagEvent> kafkaTemplate;
@@ -32,52 +30,49 @@ class FlagEventKafkaAdapterTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(adapter, "topicCreated", TOPIC_CREATED);
-        ReflectionTestUtils.setField(adapter, "topicUpdated", TOPIC_UPDATED);
-        ReflectionTestUtils.setField(adapter, "topicToggled", TOPIC_TOGGLED);
-        ReflectionTestUtils.setField(adapter, "topicDeleted", TOPIC_DELETED);
+        ReflectionTestUtils.setField(adapter, "topicFlags", TOPIC_FLAGS);
     }
 
     private FeatureFlag flag(String name, String svc) {
         return FeatureFlag.builder()
                 .id(1L).flagName(name).serviceName(svc)
-                .type(FlagType.BOOLEAN).envs(List.of()).tags(List.of())
+                .type(FlagType.BOOLEAN).environments(Map.of()).tags(List.of())
                 .enabled(true).build();
     }
 
     @Test
-    void shouldSendCreatedEventToCreatedTopic() {
+    void shouldSendCreatedEventToFlagsTopic() {
         FeatureFlag f = flag("my-flag", "billing");
 
         adapter.publish(f, FlagAction.CREATED);
 
-        verify(kafkaTemplate).send(TOPIC_CREATED, "billing.my-flag", FlagEvent.from(f, FlagAction.CREATED));
+        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.CREATED));
     }
 
     @Test
-    void shouldSendUpdatedEventToUpdatedTopic() {
+    void shouldSendUpdatedEventToFlagsTopic() {
         FeatureFlag f = flag("my-flag", "billing");
 
         adapter.publish(f, FlagAction.UPDATED);
 
-        verify(kafkaTemplate).send(TOPIC_UPDATED, "billing.my-flag", FlagEvent.from(f, FlagAction.UPDATED));
+        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.UPDATED));
     }
 
     @Test
-    void shouldSendToggledEventToToggledTopic() {
+    void shouldSendToggledEventToFlagsTopic() {
         FeatureFlag f = flag("my-flag", "billing");
 
         adapter.publish(f, FlagAction.TOGGLED);
 
-        verify(kafkaTemplate).send(TOPIC_TOGGLED, "billing.my-flag", FlagEvent.from(f, FlagAction.TOGGLED));
+        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.TOGGLED));
     }
 
     @Test
-    void shouldSendDeletedEventToDeletedTopic() {
+    void shouldSendDeletedEventToFlagsTopic() {
         FeatureFlag f = flag("my-flag", "billing");
 
         adapter.publish(f, FlagAction.DELETED);
 
-        verify(kafkaTemplate).send(TOPIC_DELETED, "billing.my-flag", FlagEvent.from(f, FlagAction.DELETED));
+        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.DELETED));
     }
 }

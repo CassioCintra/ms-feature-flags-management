@@ -31,10 +31,7 @@ spring:
 feature-flag:
   kafka:
     topics:
-      created: flag.created
-      updated: flag.updated
-      toggled: flag.toggled
-      deleted: flag.deleted
+      flags: flag.events
 
 logging:
   pattern:
