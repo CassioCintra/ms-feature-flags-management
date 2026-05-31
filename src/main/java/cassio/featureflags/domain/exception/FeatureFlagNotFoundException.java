@@ -6,7 +6,7 @@ public class FeatureFlagNotFoundException extends RuntimeException {
         super(message);
     }
 
-    public static FeatureFlagNotFoundException notFound(Long id) {
-        return new FeatureFlagNotFoundException("Feature flag not found: " + id);
+    public static FeatureFlagNotFoundException notFound(String key) {
+        return new FeatureFlagNotFoundException("Feature flag not found: " + key);
     }
 }

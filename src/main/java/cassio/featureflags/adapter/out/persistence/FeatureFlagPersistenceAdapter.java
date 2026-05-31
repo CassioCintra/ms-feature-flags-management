@@ -1,7 +1,9 @@
 package cassio.featureflags.adapter.out.persistence;
 
+import cassio.featureflags.adapter.out.persistence.entity.FeatureFlagEntity;
 import cassio.featureflags.application.port.out.FeatureFlagRepository;
 import cassio.featureflags.domain.FeatureFlag;
+import cassio.featureflags.domain.FlagType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -20,13 +22,13 @@ public class FeatureFlagPersistenceAdapter implements FeatureFlagRepository {
     }
 
     @Override
-    public Optional<FeatureFlag> findById(Long id) {
-        return jpaRepository.findById(id).map(FeatureFlagEntity::toDomain);
+    public Optional<FeatureFlag> findByFlagName(String flagName) {
+        return jpaRepository.findByFlagName(flagName).map(FeatureFlagEntity::toDomain);
     }
 
     @Override
-    public boolean existsByFlagNameAndServiceNameAndEnvironmentName(String flagName, String serviceName, String environmentName) {
-        return jpaRepository.existsByFlagNameAndServiceNameAndEnvironmentName(flagName, serviceName, environmentName);
+    public boolean existsByFlagName(String flagName) {
+        return jpaRepository.existsByFlagName(flagName);
     }
 
     @Override
@@ -35,10 +37,23 @@ public class FeatureFlagPersistenceAdapter implements FeatureFlagRepository {
     }
 
     @Override
-    public List<FeatureFlag> findByServiceNameAndEnvironmentName(String serviceName, String environmentName) {
-        return jpaRepository.findByServiceNameAndEnvironmentName(serviceName, environmentName)
+    public List<FeatureFlag> findAll(String service, String env, FlagType type, String search) {
+        return jpaRepository.findAllWithFilters(service, env, type, search)
                 .stream()
                 .map(FeatureFlagEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public List<FeatureFlag> findByFlagNameIn(List<String> flagNames) {
+        return jpaRepository.findByFlagNameIn(flagNames)
+                .stream()
+                .map(FeatureFlagEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<String> findDistinctServiceNames() {
+        return jpaRepository.findDistinctServiceNames();
     }
 }

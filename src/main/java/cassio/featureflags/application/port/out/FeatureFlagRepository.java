@@ -1,6 +1,7 @@
 package cassio.featureflags.application.port.out;
 
 import cassio.featureflags.domain.FeatureFlag;
+import cassio.featureflags.domain.FlagType;
 
 import java.util.List;
 import java.util.Optional;
@@ -9,11 +10,15 @@ public interface FeatureFlagRepository {
 
     FeatureFlag save(FeatureFlag flag);
 
-    Optional<FeatureFlag> findById(Long id);
+    Optional<FeatureFlag> findByFlagName(String flagName);
 
-    boolean existsByFlagNameAndServiceNameAndEnvironmentName(String flagName, String serviceName, String environmentName);
+    boolean existsByFlagName(String flagName);
 
     void delete(FeatureFlag flag);
 
-    List<FeatureFlag> findByServiceNameAndEnvironmentName(String serviceName, String environmentName);
+    List<FeatureFlag> findAll(String service, String env, FlagType type, String search);
+
+    List<FeatureFlag> findByFlagNameIn(List<String> flagNames);
+
+    List<String> findDistinctServiceNames();
 }
