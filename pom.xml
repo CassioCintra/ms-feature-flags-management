@@ -10,7 +10,7 @@
     </parent>
     <groupId>cassio</groupId>
     <artifactId>ms-feature-flags-management</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1</version>
     <name>ms-feature-flags-management</name>
     <description>ms-feature-flags-management</description>
     <url/>
@@ -29,6 +29,7 @@
     <properties>
         <java.version>25</java.version>
         <postgresql.version>42.7.11</postgresql.version>
+        <springdoc.version>3.0.3</springdoc.version>
         <sonar.organization>cassiocintra</sonar.organization>
         <sonar.projectKey>CassioCintra_ms-feature-flags-management</sonar.projectKey>
     </properties>
@@ -64,7 +65,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.0.2</version>
+            <version>${springdoc.version}</version>
         </dependency>
 
         <dependency>
