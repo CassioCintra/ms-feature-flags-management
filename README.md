@@ -10,7 +10,9 @@ Microserviço responsável pelo ciclo de vida de feature flags dentro da platafo
 | Framework    | Spring Boot 4.0.6           |
 | Banco        | PostgreSQL 16               |
 | Event Bus    | Kafka 4.0 (KRaft)           |
-| Auth         | Keycloak 26.6               |
+
+=======
+| Auth         | ms-auth (Spring Authorization Server) |
 | Migrations   | Flyway                      |
 | Testes       | JUnit 5 + Testcontainers    |
 
@@ -24,18 +26,13 @@ Microserviço responsável pelo ciclo de vida de feature flags dentro da platafo
 ### 1. Subir a infraestrutura
 
 ```bash
+# No repositório platform-ops
 docker compose up -d
 ```
 
-Sobe PostgreSQL (5432), Kafka (9092) e Keycloak (8080).
+Sobe PostgreSQL (5432), Kafka (9092) e ms-auth (9000).
 
-### 2. Configurar o Keycloak
-
-1. Acesse `http://localhost:8080` com `admin` / `admin`
-2. Crie o realm `ms-feature-flags-management`
-3. Dentro do realm, crie um client (ex: `api-client`) com `Client authentication` habilitado para emitir tokens de teste
-
-### 3. Rodar a aplicação
+### 2. Rodar a aplicação
 
 ```bash
 ./mvnw spring-boot:run
@@ -47,7 +44,9 @@ A API ficará disponível em:
 http://localhost:8081/feature-flag/v1
 ```
 
-Swagger UI disponível em `http://localhost:8081/feature-flag/v1/swagger-ui.html`.
+Swagger UI disponível em:
+- **Direto:** `http://localhost:8081/feature-flag/v1/swagger-ui.html`
+- **Via gateway:** `http://localhost:8090/swagger-ui.html` (seletor com todos os serviços)
 
 ## API
 
@@ -188,6 +187,35 @@ src/main/java/cassio/featureflags/
 # Integração (requer Docker para Testcontainers)
 ./mvnw test -Dtest="FeatureFlagPersistenceAdapterTest,FeatureFlagsApplicationTests"
 
+# Gerar spec OpenAPI (requer Docker — usado também pela pipeline de CI)
+./mvnw test -Dtest=OpenApiSpecGeneratorTest
+
 # Todos
 ./mvnw verify
 ```
+
+| Tipo | Ferramentas | Exemplo |
+|------|-------------|---------|
+| Web slice | `@WebMvcTest` + MockMvc | `FeatureFlagControllerTest` |
+| Serviço (unit) | JUnit 5 + Mockito | `FeatureFlagServiceTest` |
+| Messaging (unit) | Mockito | `FlagEventKafkaAdapterTest` |
+| Persistência (integr.) | Testcontainers (PostgreSQL + Kafka) | `FeatureFlagPersistenceAdapterTest` |
+| Smoke test | Testcontainers (PostgreSQL + Kafka) | `FeatureFlagsApplicationTests` |
+| OpenAPI spec | `@SpringBootTest` + MockMvc + Testcontainers | `OpenApiSpecGeneratorTest` |
+
+## Contexto no ecossistema Switchboard
+
+```
+Fase 1 — ms-feature-flags          ✅ este serviço
+Fase 2 — ms-workspace-management   ✅ concluída
+Fase 3 — ms-auth                   ✅ concluída
+Fase 3.1 — Adaptar ms-workspace para ms-auth  ✅ concluída
+Fase 3.2 — Adaptar ms-feature-flags para ms-auth  ✅ concluída
+Fase 4   — Spring Cloud Gateway    ✅ concluída
+Fase 4.1 — OpenAPI specs + pipelines  ✅ este serviço incluído
+Fase 4.2 — Dockerfiles             ⏳
+Fase 5   — ms-audit                ⏳
+Fase 6   — ms-dashboard (BFF)      ⏳
+```
+
+Documentação completa da plataforma: [`platform-ops/docs/architecture`](https://github.com/CassioCintra/platform-ops/blob/main/docs/architecture/README.md)

@@ -35,9 +35,13 @@ feature-flag:
 
 logging:
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{correlator}] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%X{correlator}] %-5level %logger{0} - %msg%n"
   level:
     cassio.featureflags: DEBUG
+
+info:
+  app:
+    version: "@project.version@"
 
 server:
   port: 8081
