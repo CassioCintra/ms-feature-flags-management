@@ -9,7 +9,7 @@ on:
 
 env:
   SERVICE_NAME: ms-feature-flags
-  GATEWAY_REPO: CassioCintra/gateway
+  GATEWAY_REPO: CassioCintra/api-gateway
   GATEWAY_BRANCH: development
   JAVA_VERSION: '25'
 
