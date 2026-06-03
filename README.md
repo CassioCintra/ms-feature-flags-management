@@ -10,6 +10,8 @@ Microserviço responsável pelo ciclo de vida de feature flags dentro da platafo
 | Framework    | Spring Boot 4.0.6           |
 | Banco        | PostgreSQL 16               |
 | Event Bus    | Kafka 4.0 (KRaft)           |
+
+=======
 | Auth         | ms-auth (Spring Authorization Server) |
 | Migrations   | Flyway                      |
 | Testes       | JUnit 5 + Testcontainers    |
