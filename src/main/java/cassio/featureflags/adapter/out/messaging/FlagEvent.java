@@ -18,9 +18,10 @@ public record FlagEvent(
         String owner,
         LocalDate expiresAt,
         boolean enabled,
-        FlagAction action
+        FlagAction action,
+        String actorId
 ) {
-    public static FlagEvent from(FeatureFlag flag, FlagAction action) {
+    public static FlagEvent from(FeatureFlag flag, FlagAction action, String actorId) {
         return new FlagEvent(
                 flag.getFlagName(),
                 flag.getServiceName(),
@@ -31,7 +32,8 @@ public record FlagEvent(
                 flag.getOwner(),
                 flag.getExpiresAt(),
                 flag.isEnabled(),
-                action
+                action,
+                actorId
         );
     }
 }

@@ -5,5 +5,5 @@ import cassio.featureflags.domain.FlagAction;
 
 public interface FlagEventPublisher {
 
-    void publish(FeatureFlag flag, FlagAction action);
+    void publish(FeatureFlag flag, FlagAction action, String actorId);
 }
