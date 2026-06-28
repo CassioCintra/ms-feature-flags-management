@@ -33,6 +33,8 @@ class FlagEventKafkaAdapterTest {
         ReflectionTestUtils.setField(adapter, "topicFlags", TOPIC_FLAGS);
     }
 
+    private static final String ACTOR_ID = "user-123";
+
     private FeatureFlag flag(String name, String svc) {
         return FeatureFlag.builder()
                 .id(1L).flagName(name).serviceName(svc)
@@ -44,35 +46,35 @@ class FlagEventKafkaAdapterTest {
     void shouldSendCreatedEventToFlagsTopic() {
         FeatureFlag f = flag("my-flag", "billing");
 
-        adapter.publish(f, FlagAction.CREATED);
+        adapter.publish(f, FlagAction.CREATED, ACTOR_ID);
 
-        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.CREATED));
+        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.CREATED, ACTOR_ID));
     }
 
     @Test
     void shouldSendUpdatedEventToFlagsTopic() {
         FeatureFlag f = flag("my-flag", "billing");
 
-        adapter.publish(f, FlagAction.UPDATED);
+        adapter.publish(f, FlagAction.UPDATED, ACTOR_ID);
 
-        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.UPDATED));
+        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.UPDATED, ACTOR_ID));
     }
 
     @Test
     void shouldSendToggledEventToFlagsTopic() {
         FeatureFlag f = flag("my-flag", "billing");
 
-        adapter.publish(f, FlagAction.TOGGLED);
+        adapter.publish(f, FlagAction.TOGGLED, ACTOR_ID);
 
-        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.TOGGLED));
+        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.TOGGLED, ACTOR_ID));
     }
 
     @Test
     void shouldSendDeletedEventToFlagsTopic() {
         FeatureFlag f = flag("my-flag", "billing");
 
-        adapter.publish(f, FlagAction.DELETED);
+        adapter.publish(f, FlagAction.DELETED, ACTOR_ID);
 
-        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.DELETED));
+        verify(kafkaTemplate).send(TOPIC_FLAGS, "billing.my-flag", FlagEvent.from(f, FlagAction.DELETED, ACTOR_ID));
     }
 }

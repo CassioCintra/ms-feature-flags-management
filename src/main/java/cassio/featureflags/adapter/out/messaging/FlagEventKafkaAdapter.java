@@ -22,10 +22,10 @@ public class FlagEventKafkaAdapter implements FlagEventPublisher {
     private final KafkaTemplate<String, FlagEvent> kafkaTemplate;
 
     @Override
-    public void publish(FeatureFlag flag, FlagAction action) {
-        FlagEvent event = FlagEvent.from(flag, action);
+    public void publish(FeatureFlag flag, FlagAction action, String actorId) {
+        FlagEvent event = FlagEvent.from(flag, action, actorId);
         String key = flag.getServiceName() + "." + flag.getFlagName();
-        log.info("Publishing event [topic={}, key={}, action={}]", topicFlags, key, action);
+        log.info("Publishing event [topic={}, key={}, action={}, actorId={}]", topicFlags, key, action, actorId);
         kafkaTemplate.send(topicFlags, key, event);
     }
 }

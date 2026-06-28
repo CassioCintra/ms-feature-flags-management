@@ -1,5 +1,6 @@
 package cassio.featureflags.application;
 
+import cassio.featureflags.application.TenantContext;
 import cassio.featureflags.application.port.in.FeatureFlagUseCase;
 import cassio.featureflags.application.port.out.FeatureFlagRepository;
 import cassio.featureflags.application.port.out.FlagEventPublisher;
@@ -51,7 +52,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
         var persistedFlag = repository.save(flag);
         log.debug("Flag persisted [id={}, flagName={}]", persistedFlag.getId(), persistedFlag.getFlagName());
 
-        eventPublisher.publish(persistedFlag, FlagAction.CREATED);
+        eventPublisher.publish(persistedFlag, FlagAction.CREATED, TenantContext.getUserId());
         return persistedFlag;
     }
 
@@ -73,7 +74,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
         var updatedFlag = repository.save(builder.build());
         log.debug("Flag patched [key={}, enabledChanged={}]", key, enabledChanged);
 
-        eventPublisher.publish(updatedFlag, enabledChanged ? FlagAction.TOGGLED : FlagAction.UPDATED);
+        eventPublisher.publish(updatedFlag, enabledChanged ? FlagAction.TOGGLED : FlagAction.UPDATED, TenantContext.getUserId());
         return updatedFlag;
     }
 
@@ -108,7 +109,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
         repository.delete(flag);
         log.debug("Flag deleted [key={}]", key);
 
-        eventPublisher.publish(flag, FlagAction.DELETED);
+        eventPublisher.publish(flag, FlagAction.DELETED, TenantContext.getUserId());
     }
 
     @Override

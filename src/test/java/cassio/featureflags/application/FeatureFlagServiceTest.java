@@ -1,5 +1,6 @@
 package cassio.featureflags.application;
 
+import cassio.featureflags.application.TenantContext;
 import cassio.featureflags.application.port.in.FeatureFlagUseCase.CreateFlagCommand;
 import cassio.featureflags.application.port.in.FeatureFlagUseCase.ListFlagsQuery;
 import cassio.featureflags.application.port.in.FeatureFlagUseCase.PatchFlagCommand;
@@ -13,6 +14,8 @@ import cassio.featureflags.domain.FlagAction;
 import cassio.featureflags.domain.FlagType;
 import cassio.featureflags.domain.exception.FeatureFlagAlreadyExistsException;
 import cassio.featureflags.domain.exception.FeatureFlagNotFoundException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -41,6 +44,18 @@ class FeatureFlagServiceTest {
 
     @InjectMocks
     private FeatureFlagService service;
+
+    private static final String ACTOR_ID = "user-123";
+
+    @BeforeEach
+    void setUpTenantContext() {
+        TenantContext.set(ACTOR_ID, "user@test.com", "Test User");
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
+    }
 
     private FeatureFlag booleanFlag(Long id, String name, String svc, boolean enabled) {
         return FeatureFlag.builder()
@@ -82,7 +97,7 @@ class FeatureFlagServiceTest {
         assertThat(captor.getValue().getEnvironments())
                 .containsEntry("production", false)
                 .containsEntry("staging", false);
-        verify(eventPublisher).publish(saved, FlagAction.CREATED);
+        verify(eventPublisher).publish(saved, FlagAction.CREATED, ACTOR_ID);
     }
 
     @Test
@@ -109,7 +124,7 @@ class FeatureFlagServiceTest {
 
         service.patch("my-flag", cmd);
 
-        verify(eventPublisher).publish(updated, FlagAction.UPDATED);
+        verify(eventPublisher).publish(updated, FlagAction.UPDATED, ACTOR_ID);
     }
 
     @Test
@@ -123,7 +138,7 @@ class FeatureFlagServiceTest {
 
         service.patch("my-flag", cmd);
 
-        verify(eventPublisher).publish(toggled, FlagAction.TOGGLED);
+        verify(eventPublisher).publish(toggled, FlagAction.TOGGLED, ACTOR_ID);
     }
 
     @Test
@@ -145,7 +160,7 @@ class FeatureFlagServiceTest {
         service.delete("my-flag");
 
         verify(repository).delete(existing);
-        verify(eventPublisher).publish(existing, FlagAction.DELETED);
+        verify(eventPublisher).publish(existing, FlagAction.DELETED, ACTOR_ID);
     }
 
     @Test
