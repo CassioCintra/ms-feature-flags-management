@@ -187,7 +187,7 @@ src/main/java/cassio/featureflags/
 # Integração (requer Docker para Testcontainers)
 ./mvnw test -Dtest="FeatureFlagPersistenceAdapterTest,FeatureFlagsApplicationTests"
 
-# Gerar spec OpenAPI (requer Docker — usado também pela pipeline de CI)
+# Gerar spec OpenAPI (requer Docker)
 ./mvnw test -Dtest=OpenApiSpecGeneratorTest
 
 # Todos
