@@ -36,7 +36,6 @@ build/
 .junie
 ### JetBrains Qodana ###
 qodana.yaml
-.github/workflows/qodana_code_quality.yml
 
 ### AI ###
 .ai
