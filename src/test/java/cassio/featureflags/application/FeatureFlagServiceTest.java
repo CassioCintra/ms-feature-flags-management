@@ -22,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -41,6 +42,9 @@ class FeatureFlagServiceTest {
 
     @Mock
     private FlagEventPublisher eventPublisher;
+
+    @Mock
+    private ApplicationEventPublisher applicationEvents;
 
     @InjectMocks
     private FeatureFlagService service;
@@ -97,6 +101,7 @@ class FeatureFlagServiceTest {
         assertThat(captor.getValue().getEnvironments())
                 .containsEntry("production", false)
                 .containsEntry("staging", false);
+        verify(applicationEvents).publishEvent(new FlagStateChanged(saved, false));
         verify(eventPublisher).publish(saved, FlagAction.CREATED, ACTOR_ID);
     }
 
@@ -124,6 +129,7 @@ class FeatureFlagServiceTest {
 
         service.patch("my-flag", cmd);
 
+        verify(applicationEvents).publishEvent(new FlagStateChanged(updated, false));
         verify(eventPublisher).publish(updated, FlagAction.UPDATED, ACTOR_ID);
     }
 
@@ -138,6 +144,7 @@ class FeatureFlagServiceTest {
 
         service.patch("my-flag", cmd);
 
+        verify(applicationEvents).publishEvent(new FlagStateChanged(toggled, false));
         verify(eventPublisher).publish(toggled, FlagAction.TOGGLED, ACTOR_ID);
     }
 
@@ -160,6 +167,7 @@ class FeatureFlagServiceTest {
         service.delete("my-flag");
 
         verify(repository).delete(existing);
+        verify(applicationEvents).publishEvent(new FlagStateChanged(existing, true));
         verify(eventPublisher).publish(existing, FlagAction.DELETED, ACTOR_ID);
     }
 
