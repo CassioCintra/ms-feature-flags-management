@@ -25,10 +25,27 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI:http://localhost:9000}
+      client:
+        registration:
+          consul:
+            provider: ms-auth
+            client-id: ${CONSUL_CLIENT_ID:ms-feature-flags-management}
+            client-secret: ${CONSUL_CLIENT_SECRET:ms-feature-flags-management-secret}
+            authorization-grant-type: client_credentials
+            scope: flags:write
+        provider:
+          ms-auth:
+            token-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI:http://localhost:9000}/oauth2/token
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAPSERVERS:localhost:9094}
 
 feature-flag:
+  environments: ${FEATURE_FLAG_ENVIRONMENTS:dev,hml,prod}
+  consul:
+    url: ${CONSUL_URL:http://localhost:8500}
+    auth-method: ms-auth
+    client-registration-id: consul
+    reconcile-interval: ${CONSUL_RECONCILE_INTERVAL:60s}
   kafka:
     topics:
       flags: flag.events

@@ -40,7 +40,7 @@ public class FeatureFlag {
         return new EvaluationResult(flagName, result, effectiveType(), rollout);
     }
 
-    private boolean resolveActiveState(String env) {
+    public boolean resolveActiveState(String env) {
         if (!enabled) return false;
         if (env != null && environments != null && !environments.isEmpty()) {
             Boolean envState = environments.get(env);

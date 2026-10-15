@@ -12,6 +12,7 @@ import cassio.featureflags.domain.exception.FeatureFlagAlreadyExistsException;
 import cassio.featureflags.domain.exception.FeatureFlagNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
 
     private final FeatureFlagRepository repository;
     private final FlagEventPublisher eventPublisher;
+    private final ApplicationEventPublisher applicationEvents;
 
     @Override
     @Transactional
@@ -52,6 +54,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
         var persistedFlag = repository.save(flag);
         log.debug("Flag persisted [id={}, flagName={}]", persistedFlag.getId(), persistedFlag.getFlagName());
 
+        applicationEvents.publishEvent(new FlagStateChanged(persistedFlag, false));
         eventPublisher.publish(persistedFlag, FlagAction.CREATED, TenantContext.getUserId());
         return persistedFlag;
     }
@@ -74,6 +77,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
         var updatedFlag = repository.save(builder.build());
         log.debug("Flag patched [key={}, enabledChanged={}]", key, enabledChanged);
 
+        applicationEvents.publishEvent(new FlagStateChanged(updatedFlag, false));
         eventPublisher.publish(updatedFlag, enabledChanged ? FlagAction.TOGGLED : FlagAction.UPDATED, TenantContext.getUserId());
         return updatedFlag;
     }
@@ -109,6 +113,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
         repository.delete(flag);
         log.debug("Flag deleted [key={}]", key);
 
+        applicationEvents.publishEvent(new FlagStateChanged(flag, true));
         eventPublisher.publish(flag, FlagAction.DELETED, TenantContext.getUserId());
     }
 
