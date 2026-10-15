@@ -47,6 +47,7 @@ feature-flag:
     client-registration-id: consul
     reconcile-interval: ${CONSUL_RECONCILE_INTERVAL:60s}
   kafka:
+    relay-interval: ${KAFKA_RELAY_INTERVAL:1s}
     topics:
       flags: flag.events
 
