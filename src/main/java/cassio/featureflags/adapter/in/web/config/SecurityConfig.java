@@ -29,6 +29,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/v3/api-docs*", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().access((authentication, context) -> new AuthorizationDecision(
                                 authentication.get() instanceof JwtAuthenticationToken jwt
