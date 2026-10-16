@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -22,13 +23,13 @@ public class FeatureFlagPersistenceAdapter implements FeatureFlagRepository {
     }
 
     @Override
-    public Optional<FeatureFlag> findByFlagName(String flagName) {
-        return jpaRepository.findByFlagName(flagName).map(FeatureFlagEntity::toDomain);
+    public Optional<FeatureFlag> findByFlagName(UUID workspaceId, String flagName) {
+        return jpaRepository.findByWorkspaceIdAndFlagName(workspaceId, flagName).map(FeatureFlagEntity::toDomain);
     }
 
     @Override
-    public boolean existsByFlagName(String flagName) {
-        return jpaRepository.existsByFlagName(flagName);
+    public boolean existsByFlagName(UUID workspaceId, String flagName) {
+        return jpaRepository.existsByWorkspaceIdAndFlagName(workspaceId, flagName);
     }
 
     @Override
@@ -37,23 +38,31 @@ public class FeatureFlagPersistenceAdapter implements FeatureFlagRepository {
     }
 
     @Override
-    public List<FeatureFlag> findAll(String service, String env, FlagType type, String search) {
-        return jpaRepository.findAllWithFilters(service, env, type, search)
+    public List<FeatureFlag> findAll(UUID workspaceId, String service, String env, FlagType type, String search) {
+        return jpaRepository.findAllWithFilters(workspaceId, service, env, type, search)
                 .stream()
                 .map(FeatureFlagEntity::toDomain)
                 .toList();
     }
 
     @Override
-    public List<FeatureFlag> findByFlagNameIn(List<String> flagNames) {
-        return jpaRepository.findByFlagNameIn(flagNames)
+    public List<FeatureFlag> findAllAcrossWorkspaces() {
+        return jpaRepository.findAll()
                 .stream()
                 .map(FeatureFlagEntity::toDomain)
                 .toList();
     }
 
     @Override
-    public List<String> findDistinctServiceNames() {
-        return jpaRepository.findDistinctServiceNames();
+    public List<FeatureFlag> findByFlagNameIn(UUID workspaceId, List<String> flagNames) {
+        return jpaRepository.findByWorkspaceIdAndFlagNameIn(workspaceId, flagNames)
+                .stream()
+                .map(FeatureFlagEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<String> findDistinctServiceNames(UUID workspaceId) {
+        return jpaRepository.findDistinctServiceNames(workspaceId);
     }
 }

@@ -66,6 +66,27 @@ public class ConsulClient {
         }
     }
 
+    public void ensurePolicy(String name, String rules) {
+        authorized(consulToken -> {
+            var existing = restClient.get()
+                    .uri("/v1/acl/policy/name/{name}", name)
+                    .header("X-Consul-Token", consulToken)
+                    .retrieve()
+                    .onStatus(status -> status.isSameCodeAs(HttpStatus.NOT_FOUND), (request, response) -> {})
+                    .toBodilessEntity();
+            if (existing.getStatusCode().isSameCodeAs(HttpStatus.NOT_FOUND)) {
+                restClient.put()
+                        .uri("/v1/acl/policy")
+                        .header("X-Consul-Token", consulToken)
+                        .body(Map.of("Name", name, "Rules", rules))
+                        .retrieve()
+                        .toBodilessEntity();
+                log.info("Consul policy created [name={}]", name);
+            }
+            return null;
+        });
+    }
+
     private <T> T authorized(Function<String, T> call) {
         if (token == null) token = login();
         try {

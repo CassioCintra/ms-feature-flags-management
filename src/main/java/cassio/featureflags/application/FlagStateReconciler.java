@@ -33,7 +33,7 @@ public class FlagStateReconciler {
     @Transactional(readOnly = true)
     public void reconcile() {
         try {
-            var flags = repository.findAll(null, null, null, null);
+            var flags = repository.findAllAcrossWorkspaces();
             stateStore.replaceAll(flags);
             log.debug("Flag state reconciled [flags={}]", flags.size());
         } catch (RuntimeException ex) {

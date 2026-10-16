@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -50,10 +51,11 @@ class FeatureFlagServiceTest {
     private FeatureFlagService service;
 
     private static final String ACTOR_ID = "user-123";
+    private static final UUID WORKSPACE = UUID.fromString("7a1c0e2e-4d5b-4c8e-9f10-2b3c4d5e6f70");
 
     @BeforeEach
     void setUpTenantContext() {
-        TenantContext.set(ACTOR_ID, "user@test.com", "Test User");
+        TenantContext.set(ACTOR_ID, "user@test.com", "Test User", WORKSPACE);
     }
 
     @AfterEach
@@ -87,7 +89,7 @@ class FeatureFlagServiceTest {
                 .owner("payments-team").expiresAt(LocalDate.of(2026, 9, 1))
                 .enabled(false).build();
 
-        when(repository.existsByFlagName("checkout_v2")).thenReturn(false);
+        when(repository.existsByFlagName(WORKSPACE, "checkout_v2")).thenReturn(false);
         when(repository.save(any())).thenReturn(saved);
 
         FeatureFlag result = service.create(cmd);
@@ -106,8 +108,29 @@ class FeatureFlagServiceTest {
     }
 
     @Test
+    void shouldCreateFlagInTheWorkspaceOfTheRequest() {
+        when(repository.existsByFlagName(WORKSPACE, "my-flag")).thenReturn(false);
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.create(new CreateFlagCommand("my-flag", "billing", FlagType.BOOLEAN, null, Map.of(), List.of(), null, null));
+
+        var captor = ArgumentCaptor.forClass(FeatureFlag.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getWorkspaceId()).isEqualTo(WORKSPACE);
+    }
+
+    @Test
+    void shouldRefuseToWorkWithoutAWorkspaceInTheRequest() {
+        TenantContext.set(ACTOR_ID, "user@test.com", "Test User", null);
+
+        assertThatThrownBy(() -> service.listFlags(new ListFlagsQuery(null, null, null, null)))
+                .isInstanceOf(IllegalStateException.class);
+        verifyNoInteractions(repository);
+    }
+
+    @Test
     void shouldThrowWhenCreatingFlagWithDuplicateKey() {
-        when(repository.existsByFlagName("dup")).thenReturn(true);
+        when(repository.existsByFlagName(WORKSPACE, "dup")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(new CreateFlagCommand(
                 "dup", "billing", FlagType.BOOLEAN, null, Map.of(), List.of(), null, null)))
@@ -124,7 +147,7 @@ class FeatureFlagServiceTest {
         FeatureFlag updated = existing.toBuilder().rollout(50).type(FlagType.ROLLOUT).build();
         PatchFlagCommand cmd = new PatchFlagCommand(FlagType.ROLLOUT, 50, null, null, null, null, null);
 
-        when(repository.findByFlagName("my-flag")).thenReturn(Optional.of(existing));
+        when(repository.findByFlagName(WORKSPACE, "my-flag")).thenReturn(Optional.of(existing));
         when(repository.save(any())).thenReturn(updated);
 
         service.patch("my-flag", cmd);
@@ -139,7 +162,7 @@ class FeatureFlagServiceTest {
         FeatureFlag toggled = existing.toggleEnabled(true);
         PatchFlagCommand cmd = new PatchFlagCommand(null, null, null, null, null, null, true);
 
-        when(repository.findByFlagName("my-flag")).thenReturn(Optional.of(existing));
+        when(repository.findByFlagName(WORKSPACE, "my-flag")).thenReturn(Optional.of(existing));
         when(repository.save(any())).thenReturn(toggled);
 
         service.patch("my-flag", cmd);
@@ -150,7 +173,7 @@ class FeatureFlagServiceTest {
 
     @Test
     void shouldThrowWhenPatchingNonExistentFlag() {
-        when(repository.findByFlagName("ghost")).thenReturn(Optional.empty());
+        when(repository.findByFlagName(WORKSPACE, "ghost")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.patch("ghost",
                 new PatchFlagCommand(null, null, null, null, null, null, null)))
@@ -162,7 +185,7 @@ class FeatureFlagServiceTest {
     @Test
     void shouldDeleteByKeyAndPublishDeletedEvent() {
         FeatureFlag existing = booleanFlag(1L, "my-flag", "billing", false);
-        when(repository.findByFlagName("my-flag")).thenReturn(Optional.of(existing));
+        when(repository.findByFlagName(WORKSPACE, "my-flag")).thenReturn(Optional.of(existing));
 
         service.delete("my-flag");
 
@@ -173,7 +196,7 @@ class FeatureFlagServiceTest {
 
     @Test
     void shouldThrowWhenDeletingNonExistentFlag() {
-        when(repository.findByFlagName("ghost")).thenReturn(Optional.empty());
+        when(repository.findByFlagName(WORKSPACE, "ghost")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.delete("ghost"))
                 .isInstanceOf(FeatureFlagNotFoundException.class);
@@ -188,7 +211,7 @@ class FeatureFlagServiceTest {
         List<FeatureFlag> flags = List.of(
                 booleanFlag(1L, "flag-a", "billing", false),
                 booleanFlag(2L, "flag-b", "billing", true));
-        when(repository.findAll("billing", null, null, null)).thenReturn(flags);
+        when(repository.findAll(WORKSPACE, "billing", null, null, null)).thenReturn(flags);
 
         List<FeatureFlag> result = service.listFlags(new ListFlagsQuery("billing", null, null, null));
 
@@ -197,7 +220,7 @@ class FeatureFlagServiceTest {
 
     @Test
     void shouldReturnEmptyListWhenNoFlagsMatch() {
-        when(repository.findAll(null, "dev", null, null)).thenReturn(List.of());
+        when(repository.findAll(WORKSPACE, null, "dev", null, null)).thenReturn(List.of());
 
         assertThat(service.listFlags(new ListFlagsQuery(null, "dev", null, null))).isEmpty();
     }
@@ -207,7 +230,7 @@ class FeatureFlagServiceTest {
     @Test
     void shouldEvaluateBooleanFlagEnabledDirectly() {
         FeatureFlag flag = booleanFlag(1L, "my-flag", "billing", true);
-        when(repository.findByFlagName("my-flag")).thenReturn(Optional.of(flag));
+        when(repository.findByFlagName(WORKSPACE, "my-flag")).thenReturn(Optional.of(flag));
 
         EvaluationResult result = service.evaluate("my-flag",
                 EvaluationContext.of("user-1", "prod", Map.of()));
@@ -222,7 +245,7 @@ class FeatureFlagServiceTest {
                 .id(1L).flagName("my-flag").serviceName("billing")
                 .type(FlagType.BOOLEAN).environments(Map.of("staging", true)).tags(List.of())
                 .enabled(true).build();
-        when(repository.findByFlagName("my-flag")).thenReturn(Optional.of(flag));
+        when(repository.findByFlagName(WORKSPACE, "my-flag")).thenReturn(Optional.of(flag));
 
         EvaluationResult result = service.evaluate("my-flag",
                 EvaluationContext.of("user-1", "prod", Map.of()));
@@ -232,7 +255,7 @@ class FeatureFlagServiceTest {
 
     @Test
     void shouldThrowWhenEvaluatingNonExistentFlag() {
-        when(repository.findByFlagName("ghost")).thenReturn(Optional.empty());
+        when(repository.findByFlagName(WORKSPACE, "ghost")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.evaluate("ghost",
                 EvaluationContext.of("u1", "prod", Map.of())))
@@ -245,7 +268,7 @@ class FeatureFlagServiceTest {
     void shouldEvaluateBatchAndReturnResultsKeyedByFlagName() {
         FeatureFlag flagA = booleanFlag(1L, "flag-a", "billing", true);
         FeatureFlag flagB = booleanFlag(2L, "flag-b", "billing", false);
-        when(repository.findByFlagNameIn(List.of("flag-a", "flag-b")))
+        when(repository.findByFlagNameIn(WORKSPACE, List.of("flag-a", "flag-b")))
                 .thenReturn(List.of(flagA, flagB));
 
         Map<String, EvaluationResult> results = service.evaluateBatch(
@@ -261,10 +284,10 @@ class FeatureFlagServiceTest {
 
     @Test
     void shouldReturnServicesGroupedWithTheirFlags() {
-        when(repository.findDistinctServiceNames()).thenReturn(List.of("billing", "orders"));
-        when(repository.findAll("billing", null, null, null))
+        when(repository.findDistinctServiceNames(WORKSPACE)).thenReturn(List.of("billing", "orders"));
+        when(repository.findAll(WORKSPACE, "billing", null, null, null))
                 .thenReturn(List.of(booleanFlag(1L, "flag-a", "billing", true)));
-        when(repository.findAll("orders", null, null, null))
+        when(repository.findAll(WORKSPACE, "orders", null, null, null))
                 .thenReturn(List.of(booleanFlag(2L, "flag-b", "orders", false)));
 
         List<ServiceInfo> services = service.getServices();

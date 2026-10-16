@@ -32,7 +32,7 @@ spring:
             client-id: ${CONSUL_CLIENT_ID:ms-feature-flags-management}
             client-secret: ${CONSUL_CLIENT_SECRET:ms-feature-flags-management-secret}
             authorization-grant-type: client_credentials
-            scope: flags:write
+            scope: flags:write,flags:admin
         provider:
           ms-auth:
             token-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI:http://localhost:9000}/oauth2/token

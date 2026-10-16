@@ -10,16 +10,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
 public class ConsulFlagStateAdapter implements FlagStateStore {
 
     private static final String ROOT = "feature-flags/";
+    private static final String READ_POLICY_PREFIX = "flags-read-";
 
     private final ConsulClient consul;
     private final List<String> environments;
+    private final Set<UUID> workspacesWithReadPolicy = ConcurrentHashMap.newKeySet();
 
     public ConsulFlagStateAdapter(ConsulClient consul, @Value("${feature-flag.environments}") List<String> environments) {
         this.consul = consul;
@@ -28,6 +33,7 @@ public class ConsulFlagStateAdapter implements FlagStateStore {
 
     @Override
     public void save(FeatureFlag flag) {
+        ensureReadPolicy(flag.getWorkspaceId());
         sync(entriesOf(flag), currentEntriesOf(flag));
     }
 
@@ -38,9 +44,17 @@ public class ConsulFlagStateAdapter implements FlagStateStore {
 
     @Override
     public void replaceAll(List<FeatureFlag> flags) {
+        flags.stream().map(FeatureFlag::getWorkspaceId).distinct().forEach(this::ensureReadPolicy);
         var desired = new HashMap<String, String>();
         flags.forEach(flag -> desired.putAll(entriesOf(flag)));
         sync(desired, consul.read(ROOT));
+    }
+
+    private void ensureReadPolicy(UUID workspaceId) {
+        if (workspacesWithReadPolicy.contains(workspaceId)) return;
+        consul.ensurePolicy(READ_POLICY_PREFIX + workspaceId,
+                "key_prefix \"" + ROOT + workspaceId + "/\" { policy = \"read\" }");
+        workspacesWithReadPolicy.add(workspaceId);
     }
 
     private void sync(Map<String, String> desired, Map<String, String> current) {
@@ -56,7 +70,7 @@ public class ConsulFlagStateAdapter implements FlagStateStore {
     }
 
     private Map<String, String> currentEntriesOf(FeatureFlag flag) {
-        var current = consul.read(ROOT + flag.getServiceName() + "/");
+        var current = consul.read(prefixOf(flag));
         current.keySet().removeIf(key -> !key.endsWith("/" + flag.getFlagName()));
         return current;
     }
@@ -67,9 +81,13 @@ public class ConsulFlagStateAdapter implements FlagStateStore {
 
         var entries = new HashMap<String, String>();
         for (var env : flagEnvironments) {
-            var key = ROOT + flag.getServiceName() + "/" + env + "/" + flag.getFlagName();
+            var key = prefixOf(flag) + env + "/" + flag.getFlagName();
             entries.put(key, "{\"enabled\":" + flag.resolveActiveState(env) + "}");
         }
         return entries;
+    }
+
+    private static String prefixOf(FeatureFlag flag) {
+        return ROOT + flag.getWorkspaceId() + "/" + flag.getServiceName() + "/";
     }
 }
