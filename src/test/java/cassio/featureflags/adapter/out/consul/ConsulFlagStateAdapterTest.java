@@ -65,19 +65,33 @@ class ConsulFlagStateAdapterTest {
         admin.put().uri("/v1/acl/policy")
                 .body(Map.of("Name", "flags-write", "Rules", "key_prefix \"feature-flags/\" { policy = \"write\" }"))
                 .retrieve().toBodilessEntity();
+        admin.put().uri("/v1/acl/policy")
+                .body(Map.of("Name", "flags-admin", "Rules", "acl = \"write\""))
+                .retrieve().toBodilessEntity();
         admin.put().uri("/v1/acl/role")
                 .body(Map.of("Name", "flags-writer", "Policies", List.of(Map.of("Name", "flags-write"))))
+                .retrieve().toBodilessEntity();
+        admin.put().uri("/v1/acl/role")
+                .body(Map.of("Name", "flags-administrator", "Policies", List.of(Map.of("Name", "flags-admin"))))
                 .retrieve().toBodilessEntity();
         admin.put().uri("/v1/acl/auth-method")
                 .body(Map.of("Name", "ms-auth", "Type", "jwt", "MaxTokenTTL", "15m", "Config", Map.of(
                         "JWTValidationPubKeys", List.of(publicKeyPem),
                         "BoundAudiences", List.of("consul"),
                         "ListClaimMappings", Map.of("scope", "scopes"),
-                        "ClaimMappings", Map.of("sub", "client_id"))))
+                        "ClaimMappings", Map.of("sub", "client_id", "workspace_id", "workspace_id"))))
                 .retrieve().toBodilessEntity();
         admin.put().uri("/v1/acl/binding-rule")
                 .body(Map.of("AuthMethod", "ms-auth", "BindType", "role", "BindName", "flags-writer",
                         "Selector", "\"flags:write\" in list.scopes"))
+                .retrieve().toBodilessEntity();
+        admin.put().uri("/v1/acl/binding-rule")
+                .body(Map.of("AuthMethod", "ms-auth", "BindType", "role", "BindName", "flags-administrator",
+                        "Selector", "\"flags:admin\" in list.scopes"))
+                .retrieve().toBodilessEntity();
+        admin.put().uri("/v1/acl/binding-rule")
+                .body(Map.of("AuthMethod", "ms-auth", "BindType", "policy", "BindName", "flags-read-${value.workspace_id}",
+                        "Selector", "\"flags:read\" in list.scopes"))
                 .retrieve().toBodilessEntity();
     }
 
@@ -85,7 +99,7 @@ class ConsulFlagStateAdapterTest {
     void createAdapter() {
         var client = new ConsulClient(RestClient.builder().baseUrl(consulUrl()).build(), "ms-auth", () -> {
             logins.incrementAndGet();
-            return jwt();
+            return jwt(null, "flags:write", "flags:admin");
         });
         adapter = new ConsulFlagStateAdapter(client, ENVIRONMENTS);
     }
@@ -199,6 +213,37 @@ class ConsulFlagStateAdapterTest {
         assertThat(serviceKeys()).containsOnlyKeys("dev/current", "hml/current", "prod/current");
     }
 
+    @Test
+    void letsTheApplicationsOfAWorkspaceReadOnlyItsOwnFlags() {
+        var otherWorkspace = UUID.randomUUID();
+        adapter.save(flag("new-checkout", true, Map.of()));
+        adapter.save(flag(otherWorkspace, "new-checkout", true, Map.of()));
+
+        var applicationToken = admin.post().uri("/v1/acl/login")
+                .body(Map.of("AuthMethod", "ms-auth", "BearerToken", jwt(workspace, "flags:read")))
+                .retrieve().body(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .get("SecretID");
+        var application = RestClient.builder().baseUrl(consulUrl())
+                .defaultHeader("X-Consul-Token", (String) applicationToken).build();
+
+        assertThat(readStatus(application, workspace)).isEqualTo(200);
+        assertThat(readStatus(application, otherWorkspace)).isEqualTo(404);
+    }
+
+    @Test
+    void refusesTheLoginOfApplicationsFromAWorkspaceWithoutFlags() {
+        var login = admin.post().uri("/v1/acl/login")
+                .body(Map.of("AuthMethod", "ms-auth", "BearerToken", jwt(UUID.randomUUID(), "flags:read")))
+                .exchange((request, response) -> response.getStatusCode().value());
+
+        assertThat(login).isEqualTo(403);
+    }
+
+    private int readStatus(RestClient client, UUID workspaceId) {
+        return client.get().uri("/v1/kv/feature-flags/" + workspaceId + "/?recurse")
+                .exchange((request, response) -> response.getStatusCode().value());
+    }
+
     private FeatureFlag flag(String name, boolean enabled, Map<String, Boolean> environments) {
         return flag(workspace, name, enabled, environments);
     }
@@ -240,12 +285,13 @@ class ConsulFlagStateAdapterTest {
         admin.put().uri("/v1/kv/feature-flags/" + workspace + "/" + service + "/" + key).body(value).retrieve().toBodilessEntity();
     }
 
-    private static String jwt() {
+    private static String jwt(UUID workspaceId, String... scopes) {
         try {
             var claims = new JWTClaimsSet.Builder()
                     .subject("ms-feature-flags-management")
                     .audience("consul")
-                    .claim("scope", List.of("flags:write"))
+                    .claim("scope", List.of(scopes))
+                    .claim("workspace_id", workspaceId == null ? null : workspaceId.toString())
                     .issueTime(new Date())
                     .expirationTime(Date.from(Instant.now().plusSeconds(300)))
                     .build();
