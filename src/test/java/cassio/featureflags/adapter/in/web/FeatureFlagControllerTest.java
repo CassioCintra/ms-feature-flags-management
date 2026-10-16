@@ -277,4 +277,29 @@ class FeatureFlagControllerTest {
 
         verifyNoInteractions(useCase);
     }
+
+    // ── Request errors ────────────────────────────────────────────────────────
+
+    @Test
+    void shouldReturn400WhenTheBodyIsMalformed() throws Exception {
+        mockMvc.perform(post("/flags").contentType(MediaType.APPLICATION_JSON).content("{x"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+
+        verifyNoInteractions(useCase);
+    }
+
+    @Test
+    void shouldReturn404ForAnUnknownPath() throws Exception {
+        mockMvc.perform(get("/unknown"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    void shouldReturn405ForAnUnsupportedMethod() throws Exception {
+        mockMvc.perform(put("/flags"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.status").value(405));
+    }
 }
