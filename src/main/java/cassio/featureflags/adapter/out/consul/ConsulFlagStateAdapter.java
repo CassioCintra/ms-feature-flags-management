@@ -56,7 +56,7 @@ public class ConsulFlagStateAdapter implements FlagStateStore {
     }
 
     private Map<String, String> currentEntriesOf(FeatureFlag flag) {
-        var current = consul.read(ROOT + flag.getServiceName() + "/");
+        var current = consul.read(prefixOf(flag));
         current.keySet().removeIf(key -> !key.endsWith("/" + flag.getFlagName()));
         return current;
     }
@@ -67,9 +67,13 @@ public class ConsulFlagStateAdapter implements FlagStateStore {
 
         var entries = new HashMap<String, String>();
         for (var env : flagEnvironments) {
-            var key = ROOT + flag.getServiceName() + "/" + env + "/" + flag.getFlagName();
+            var key = prefixOf(flag) + env + "/" + flag.getFlagName();
             entries.put(key, "{\"enabled\":" + flag.resolveActiveState(env) + "}");
         }
         return entries;
+    }
+
+    private static String prefixOf(FeatureFlag flag) {
+        return ROOT + flag.getWorkspaceId() + "/" + flag.getServiceName() + "/";
     }
 }

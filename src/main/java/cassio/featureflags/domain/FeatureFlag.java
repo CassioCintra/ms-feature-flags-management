@@ -7,6 +7,7 @@ import lombok.With;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Getter
 @Builder(toBuilder = true)
@@ -14,6 +15,7 @@ import java.util.Map;
 public class FeatureFlag {
 
     private final Long id;
+    private final UUID workspaceId;
     private final String flagName;
     private final String serviceName;
     private final FlagType type;

@@ -34,12 +34,13 @@ public class FeatureFlagService implements FeatureFlagUseCase {
     public FeatureFlag create(CreateFlagCommand command) {
         log.debug("Checking existence [flagName={}]", command.flagName());
 
-        if (repository.existsByFlagName(command.flagName())) {
+        if (repository.existsByFlagName(TenantContext.getWorkspaceId(), command.flagName())) {
             log.warn("Flag already exists [flagName={}]", command.flagName());
             throw FeatureFlagAlreadyExistsException.alreadyExists(command.flagName());
         }
 
         var flag = FeatureFlag.builder()
+                .workspaceId(TenantContext.getWorkspaceId())
                 .flagName(command.flagName())
                 .serviceName(command.serviceName())
                 .type(command.type())
@@ -64,7 +65,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
     public FeatureFlag patch(String key, PatchFlagCommand command) {
         log.debug("Looking up flag for patch [key={}]", key);
 
-        var flag = repository.findByFlagName(key)
+        var flag = repository.findByFlagName(TenantContext.getWorkspaceId(), key)
                 .orElseThrow(() -> {
                     log.warn("Flag not found for patch [key={}]", key);
                     return FeatureFlagNotFoundException.notFound(key);
@@ -104,7 +105,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
     public void delete(String key) {
         log.debug("Looking up flag for deletion [key={}]", key);
 
-        var flag = repository.findByFlagName(key)
+        var flag = repository.findByFlagName(TenantContext.getWorkspaceId(), key)
                 .orElseThrow(() -> {
                     log.warn("Flag not found for deletion [key={}]", key);
                     return FeatureFlagNotFoundException.notFound(key);
@@ -122,7 +123,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
     public List<FeatureFlag> listFlags(ListFlagsQuery query) {
         log.debug("Listing flags [service={}, env={}, type={}, search={}]",
                 query.service(), query.env(), query.type(), query.search());
-        return repository.findAll(query.service(), query.env(), query.type(), query.search());
+        return repository.findAll(TenantContext.getWorkspaceId(), query.service(), query.env(), query.type(), query.search());
     }
 
     @Override
@@ -131,7 +132,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
         log.debug("Evaluating flag [key={}, userId={}, env={}]",
                 key, context.userId(), context.env());
 
-        var flag = repository.findByFlagName(key)
+        var flag = repository.findByFlagName(TenantContext.getWorkspaceId(), key)
                 .orElseThrow(() -> FeatureFlagNotFoundException.notFound(key));
 
         return flag.evaluate(context);
@@ -143,7 +144,7 @@ public class FeatureFlagService implements FeatureFlagUseCase {
         log.debug("Evaluating batch [count={}, userId={}, env={}]",
                 keys.size(), context.userId(), context.env());
 
-        return repository.findByFlagNameIn(keys).stream()
+        return repository.findByFlagNameIn(TenantContext.getWorkspaceId(), keys).stream()
                 .collect(Collectors.toMap(
                         FeatureFlag::getFlagName,
                         flag -> flag.evaluate(context)));
@@ -152,8 +153,9 @@ public class FeatureFlagService implements FeatureFlagUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<ServiceInfo> getServices() {
-        return repository.findDistinctServiceNames().stream()
-                .map(svc -> new ServiceInfo(svc, repository.findAll(svc, null, null, null)))
+        var workspaceId = TenantContext.getWorkspaceId();
+        return repository.findDistinctServiceNames(workspaceId).stream()
+                .map(svc -> new ServiceInfo(svc, repository.findAll(workspaceId, svc, null, null, null)))
                 .toList();
     }
 }

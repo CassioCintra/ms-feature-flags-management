@@ -26,7 +26,8 @@ public class TenantExtractorFilter extends OncePerRequestFilter {
                 TenantContext.set(
                         jwtAuth.getToken().getSubject(),
                         jwtAuth.getToken().getClaimAsString("email"),
-                        jwtAuth.getToken().getClaimAsString("name")
+                        jwtAuth.getToken().getClaimAsString("name"),
+                        WorkspaceClaim.of(jwtAuth.getToken()).orElse(null)
                 );
             }
             filterChain.doFilter(request, response);

@@ -52,9 +52,9 @@ class FlagStateReconcilerTest {
     }
 
     @Test
-    void shouldReplaceTheStoredStateWithEveryFlagInTheDatabase() {
+    void shouldReplaceTheStoredStateWithEveryFlagOfEveryWorkspace() {
         var flags = List.of(flag, FeatureFlag.builder().flagName("b").serviceName("orders").build());
-        when(repository.findAll(null, null, null, null)).thenReturn(flags);
+        when(repository.findAllAcrossWorkspaces()).thenReturn(flags);
 
         reconciler.reconcile();
 
@@ -63,7 +63,7 @@ class FlagStateReconcilerTest {
 
     @Test
     void shouldKeepRunningWhenReconciliationFails() {
-        when(repository.findAll(null, null, null, null)).thenReturn(List.of(flag));
+        when(repository.findAllAcrossWorkspaces()).thenReturn(List.of(flag));
         doThrow(new IllegalStateException("Consul unavailable")).when(stateStore).replaceAll(List.of(flag));
 
         assertThatCode(reconciler::reconcile).doesNotThrowAnyException();

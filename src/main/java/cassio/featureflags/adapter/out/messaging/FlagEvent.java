@@ -7,8 +7,10 @@ import cassio.featureflags.domain.FlagType;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public record FlagEvent(
+        UUID workspaceId,
         String flagName,
         String serviceName,
         FlagType type,
@@ -23,6 +25,7 @@ public record FlagEvent(
 ) {
     public static FlagEvent from(FeatureFlag flag, FlagAction action, String actorId) {
         return new FlagEvent(
+                flag.getWorkspaceId(),
                 flag.getFlagName(),
                 flag.getServiceName(),
                 flag.getType(),

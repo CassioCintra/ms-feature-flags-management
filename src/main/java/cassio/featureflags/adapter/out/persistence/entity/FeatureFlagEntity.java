@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "feature_flags")
@@ -29,7 +30,10 @@ public class FeatureFlagEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "flag_name", nullable = false, unique = true)
+    @Column(name = "workspace_id", nullable = false)
+    private UUID workspaceId;
+
+    @Column(name = "flag_name", nullable = false)
     private String flagName;
 
     @Column(name = "service_name", nullable = false)
@@ -73,6 +77,7 @@ public class FeatureFlagEntity {
     public static FeatureFlagEntity from(FeatureFlag flag) {
         return FeatureFlagEntity.builder()
                 .id(flag.getId())
+                .workspaceId(flag.getWorkspaceId())
                 .flagName(flag.getFlagName())
                 .serviceName(flag.getServiceName())
                 .type(flag.getType() != null ? flag.getType() : FlagType.BOOLEAN)
@@ -88,6 +93,7 @@ public class FeatureFlagEntity {
     public FeatureFlag toDomain() {
         return FeatureFlag.builder()
                 .id(id)
+                .workspaceId(workspaceId)
                 .flagName(flagName)
                 .serviceName(serviceName)
                 .type(type)

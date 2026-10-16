@@ -16,6 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({TestcontainersConfiguration.class, FlagEventOutboxAdapter.class, FlagEventOutboxAdapterTest.Json.class})
 class FlagEventOutboxAdapterTest {
+
+    private static final UUID WORKSPACE = UUID.fromString("7a1c0e2e-4d5b-4c8e-9f10-2b3c4d5e6f70");
 
     @Autowired
     private FlagEventOutboxAdapter adapter;
@@ -37,7 +40,7 @@ class FlagEventOutboxAdapterTest {
     @Test
     void shouldStoreTheEventInTheOutboxInsteadOfSendingIt() {
         var flag = FeatureFlag.builder()
-                .id(1L).flagName("checkout_v2").serviceName("billing")
+                .id(1L).workspaceId(WORKSPACE).flagName("checkout_v2").serviceName("billing")
                 .type(FlagType.ROLLOUT).rollout(30)
                 .environments(Map.of("prod", true)).tags(List.of("payments"))
                 .owner("payments-team").expiresAt(LocalDate.of(2026, 9, 1))
@@ -47,9 +50,10 @@ class FlagEventOutboxAdapterTest {
 
         var stored = outbox.findAll();
         assertThat(stored).hasSize(1);
-        assertThat(stored.getFirst().getMessageKey()).isEqualTo("billing.checkout_v2");
-        assertThat(jsonMapper.readValue(stored.getFirst().getPayload(), FlagEvent.class))
-                .isEqualTo(FlagEvent.from(flag, FlagAction.TOGGLED, "user-123"));
+        assertThat(stored.getFirst().getMessageKey()).isEqualTo(WORKSPACE + ".billing.checkout_v2");
+        var event = jsonMapper.readValue(stored.getFirst().getPayload(), FlagEvent.class);
+        assertThat(event).isEqualTo(FlagEvent.from(flag, FlagAction.TOGGLED, "user-123"));
+        assertThat(event.workspaceId()).isEqualTo(WORKSPACE);
     }
 
     static class Json {

@@ -22,7 +22,7 @@ public class FlagEventOutboxAdapter implements FlagEventPublisher {
     @Transactional(propagation = Propagation.MANDATORY)
     public void publish(FeatureFlag flag, FlagAction action, String actorId) {
         var event = FlagEvent.from(flag, action, actorId);
-        var key = flag.getServiceName() + "." + flag.getFlagName();
+        var key = flag.getWorkspaceId() + "." + flag.getServiceName() + "." + flag.getFlagName();
         outbox.save(new FlagEventOutboxEntity(key, jsonMapper.writeValueAsString(event)));
         log.debug("Event stored in outbox [key={}, action={}, actorId={}]", key, action, actorId);
     }

@@ -46,6 +46,7 @@ class ConsulFlagStateAdapterTest {
     private static RSAKey signingKey;
     private static RestClient admin;
 
+    private final UUID workspace = UUID.randomUUID();
     private final String service = "svc-" + UUID.randomUUID();
     private final AtomicInteger logins = new AtomicInteger();
     private ConsulFlagStateAdapter adapter;
@@ -171,8 +172,40 @@ class ConsulFlagStateAdapterTest {
         assertThat(serviceKeys()).containsEntry("dev/new-checkout", "{\"enabled\":true}");
     }
 
+    @Test
+    void keepsFlagsWithTheSameNameInDifferentWorkspacesApart() {
+        var otherWorkspace = UUID.randomUUID();
+        adapter.save(flag("new-checkout", true, Map.of()));
+        adapter.save(flag(otherWorkspace, "new-checkout", false, Map.of()));
+
+        adapter.remove(flag("new-checkout", true, Map.of()));
+
+        assertThat(serviceKeys()).isEmpty();
+        assertThat(serviceKeys(otherWorkspace)).containsOnly(
+                Map.entry("dev/new-checkout", "{\"enabled\":false}"),
+                Map.entry("hml/new-checkout", "{\"enabled\":false}"),
+                Map.entry("prod/new-checkout", "{\"enabled\":false}"));
+    }
+
+    @Test
+    void replaceAllRemovesKeysOfTheLayoutWithoutWorkspace() {
+        admin.put().uri("/v1/kv/feature-flags/" + service + "/dev/legacy").body("{\"enabled\":true}").retrieve().toBodilessEntity();
+
+        adapter.replaceAll(List.of(flag("current", true, Map.of())));
+
+        var legacy = admin.get().uri("/v1/kv/feature-flags/" + service + "/?recurse")
+                .exchange((request, response) -> response.getStatusCode().value());
+        assertThat(legacy).isEqualTo(404);
+        assertThat(serviceKeys()).containsOnlyKeys("dev/current", "hml/current", "prod/current");
+    }
+
     private FeatureFlag flag(String name, boolean enabled, Map<String, Boolean> environments) {
+        return flag(workspace, name, enabled, environments);
+    }
+
+    private FeatureFlag flag(UUID workspaceId, String name, boolean enabled, Map<String, Boolean> environments) {
         return FeatureFlag.builder()
+                .workspaceId(workspaceId)
                 .flagName(name)
                 .serviceName(service)
                 .type(FlagType.BOOLEAN)
@@ -182,22 +215,29 @@ class ConsulFlagStateAdapterTest {
     }
 
     private Map<String, String> serviceKeys() {
-        var prefix = "feature-flags/" + service + "/";
+        return serviceKeys(workspace);
+    }
+
+    private Map<String, String> serviceKeys(UUID workspaceId) {
+        var prefix = "feature-flags/" + workspaceId + "/" + service + "/";
         var entries = admin.get().uri("/v1/kv/" + prefix + "?recurse")
-                .retrieve().body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+                .retrieve()
+                .onStatus(status -> status.value() == 404, (request, response) -> {})
+                .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+        if (entries == null) return Map.of();
         return entries.stream().collect(Collectors.toMap(
                 entry -> ((String) entry.get("Key")).substring(prefix.length()),
                 entry -> new String(Base64.getDecoder().decode((String) entry.get("Value")))));
     }
 
     private long modifyIndex(String key) {
-        var entries = admin.get().uri("/v1/kv/feature-flags/" + service + "/" + key)
+        var entries = admin.get().uri("/v1/kv/feature-flags/" + workspace + "/" + service + "/" + key)
                 .retrieve().body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
         return ((Number) entries.getFirst().get("ModifyIndex")).longValue();
     }
 
     private void putKey(String key, String value) {
-        admin.put().uri("/v1/kv/feature-flags/" + service + "/" + key).body(value).retrieve().toBodilessEntity();
+        admin.put().uri("/v1/kv/feature-flags/" + workspace + "/" + service + "/" + key).body(value).retrieve().toBodilessEntity();
     }
 
     private static String jwt() {
